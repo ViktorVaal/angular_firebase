@@ -1,0 +1,14 @@
+{
+  "targets": {
+    "danotes-fa25c": {
+      "hosting": {
+        "danotes": [
+          "danotes-fa25c"
+        ]
+      }
+    }
+  },
+  "projects": {
+    "default": "danotes-fa25c"
+  }
+}
