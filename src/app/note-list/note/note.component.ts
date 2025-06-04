@@ -20,6 +20,7 @@ export class NoteComponent {
 
   changeMarkedStatus(){
     this.note.marked = !this.note.marked;
+    this.saveNote();
   }
 
   deleteHovered(){
@@ -32,7 +33,7 @@ export class NoteComponent {
     this.edit = true;
   }
 
-  closeEdit(){
+  closeEdit(){ 
     this.edit = false;
     this.saveNote();
   }
@@ -50,6 +51,6 @@ export class NoteComponent {
   }
 
   saveNote(){
-    
+    this.noteService.updateNote(this.note)
   }
 }
