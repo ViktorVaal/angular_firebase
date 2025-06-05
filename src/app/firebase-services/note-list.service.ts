@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { Firestore, collection, doc, onSnapshot, addDoc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, collection, orderBy, limit, where, query, doc, onSnapshot, addDoc, updateDoc, deleteDoc } from '@angular/fire/firestore';
 import { Note } from '../interfaces/note.interface';
 import { Observable } from 'rxjs';
 
@@ -9,6 +9,7 @@ import { Observable } from 'rxjs';
 export class NoteListService {
   trashNotes: Note[] = [];
   normalNotes: Note[] = [];
+  normalMarkedNotes: Note[] = [];
 
   // unsubSingle;
   // items$;
@@ -16,10 +17,12 @@ export class NoteListService {
   firestore: Firestore = inject(Firestore);
   unsubNotes;
   unsubTrash;
+  unsubMarkedNotes;
 
   constructor() {
     this.unsubNotes = this.subNotesList();
     this.unsubTrash = this.subTrashList();
+    this.unsubMarkedNotes = this.subMarkedNotesList();
 
 
 
@@ -32,14 +35,24 @@ export class NoteListService {
     // })
   }
 
-  async addNote(item: Note) {
-    await addDoc(this.getNotesRef(), item).catch(
-      (err) => {
-        console.error(err);
-      }
-    ).then(
-      (docRef) => { console.log("Document written with ID: ", docRef?.id) }
-    )
+  async addNote(item: Note, colId: 'notes' | 'trash') {
+    if (colId == 'notes') {
+      await addDoc(this.getNotesRef(), item).catch(
+        (err) => {
+          console.error(err);
+        }
+      ).then(
+        (docRef) => { console.log("Document written with ID: ", docRef?.id) }
+      )
+    } else {
+      await addDoc(this.getTrashRef(), item).catch(
+        (err) => {
+          console.error(err);
+        }
+      ).then(
+        (docRef) => { console.log("Document written with ID: ", docRef?.id) }
+      )
+    }
   }
 
   async updateNote(note: Note) {
@@ -50,6 +63,12 @@ export class NoteListService {
         }
       ).then();
     }
+  }
+
+  async deleteNote(colId: 'notes' | 'trash', docId: string) {
+    await deleteDoc(this.getSingleDocRef(colId, docId)).catch(
+      (err) => { console.error(err); }
+    ).then();
   }
 
   getCleanJson(note: Note) {
@@ -72,6 +91,7 @@ export class NoteListService {
   ngonDestroy() {
     this.unsubTrash();
     this.unsubNotes();
+    this.unsubMarkedNotes();
     // this.items.unsubscribe();
   }
 
@@ -85,14 +105,34 @@ export class NoteListService {
   }
 
   subNotesList() {
-    return onSnapshot(this.getNotesRef(), (list) => {
+    const q = query(this.getNotesRef(), limit(100));
+    return onSnapshot(q, (list) => {
       this.normalNotes = [];
       list.forEach(element => {
         this.normalNotes.push(this.subNotesObject(element.data(), element.id));
       });
-      console.log(this.normalNotes);
+      list.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          console.log("New note: ", change.doc.data());
+        }
+        if (change.type === "modified") {
+          console.log("Modified note: ", change.doc.data());
+        }
+        if (change.type === "removed") {
+          console.log("Removed note: ", change.doc.data());
+        }
+      });
     });
+  }
 
+  subMarkedNotesList() {
+    const q = query(this.getNotesRef(), where('marked', '==', true), limit(100));
+    return onSnapshot(q, (list) => {
+      this.normalMarkedNotes = [];
+      list.forEach(element => {
+        this.normalMarkedNotes.push(this.subNotesObject(element.data(), element.id));
+      });
+    });
   }
 
   subNotesObject(obj: any, id: string): Note {
@@ -116,6 +156,6 @@ export class NoteListService {
   }
 
   getSingleDocRef(colId: string, docId: string) {
-    return doc(collection(this.firestore, colId), docId)
+    return doc(collection(this.firestore, colId), docId);
   }
 }
